@@ -1,6 +1,4 @@
-import inspect
-
-from CSV.CSV import CSVHandler
+from CSV import CSVHandler
 
 
 # 这个方法是演示用的，平时不要这么写
@@ -51,10 +49,16 @@ def edit_tbale_value_demo(row_num, column_num, new_value):
     print_ret('修改表值', '返回类型void')
 
 
-def add_new_row_demo(*lines):
+def add_new_rows_demo(*lines):
     ch = CSVHandler('./resource/testfile.csv')
-    ch.add_new_row(*lines)
+    ch.add_new_rows(*lines)
     print_ret('增加新行', '返回类型void')
+
+
+def dele_rows_demo(*row_num):
+    ch = CSVHandler('./resource/testfile.csv')
+    ch.delete_rows(*row_num)
+    print_ret('删除某行', '返回类型void')
 
 
 if __name__ == '__main__':
@@ -64,4 +68,5 @@ if __name__ == '__main__':
     read_table_column_demo('TITLE1')  # 读取某一列
     edit_table_head_demo('TITLE2', 'TITLE2')  # 修改表头
     edit_tbale_value_demo(1, 1, 'new-1-1')  # 修改表值
-    add_new_row_demo([['a', 'a-1', 'a-2'], ['b', 'b-1', 'b-2'], ['c', 'c-1', 'c-2']])
+    add_new_rows_demo([['a', 'a-1', 'a-2'], ['b', 'b-1', 'b-2'], ['c', 'c-1', 'c-2']])
+    dele_rows_demo(2, 5)  # 删除好几行，参数可随便多少

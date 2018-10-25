@@ -28,7 +28,7 @@ class CSVHandler:
                     if i == row_num:
                         return row
             except Exception:
-                raise Exception('No Such Row In This File')
+                raise Exception('No Such Row In This File!')
 
     def read_table_column(self, column_name):
         columns = defaultdict(list)
@@ -40,7 +40,7 @@ class CSVHandler:
                         if k == column_name:
                             columns[k].append(v)
             except Exception:
-                    raise Exception('No Such Column In This File')
+                    raise Exception('No Such Column In This File!')
 
         return columns[column_name]
 
@@ -68,8 +68,19 @@ class CSVHandler:
         self.edit_table_value(0, column_num, new_head)
 
     # 一行是一个list， *kw可以一下传好几行
-    def add_new_row(self, *kw):
+    def add_new_rows(self, *new_lines):
         with open(self.file_path, 'a', newline='') as csv_file:
             cwriter = csv.writer(csv_file)
-            for line in kw:
+            for line in new_lines:
                 cwriter.writerows(line)
+
+    def delete_rows(self, *row_nums):
+        table_list = self.read_table()
+        for row_num in row_nums:
+            try:
+                table_list.pop(row_num)
+            except Exception:
+                raise Exception('No Such Row In This File!')
+        with open(self.file_path, 'w', newline='') as csv_file:
+            cwriter = csv.writer(csv_file)
+            cwriter.writerows(table_list)
