@@ -6,6 +6,54 @@ class CSVHandler:
 
     def __init__(self, file_path):
         self.file_path = file_path
+        self.id_row_map = {}
+        self.title_column_map = {}
+        self.__mapping_id_and_row_number()  # 不需要这个功能的话把这个注释掉
+        self.__mapping_title_and_column_number()  # 同上，但是read_table_row_by_id，read_value_by_id_and_title等一些方法会失效
+
+    def __mapping_id_and_row_number(self):
+        with open(self.file_path, 'r') as csv_file:
+            creader = csv.reader(csv_file)
+            for i, row in enumerate(creader):
+                self.id_row_map.__setitem__(row[0], i)
+                # 上面这行这么写死这个row[0]其实不大好，按具体需求改一改。意思是第0行为我的表的唯一识别ID（如果你的表里有且需要唯一识别key的话）
+
+    def __mapping_title_and_column_number(self):
+        head_list = self.read_table_head()
+        for i, head in enumerate(head_list):
+            self.title_column_map.__setitem__(head, i)
+
+    def __refresh__mappings(self):
+        self.__mapping_id_and_row_number()
+        self.__mapping_title_and_column_number()
+
+    def read_table_row_by_id(self, id):
+        row_num = self.id_row_map.get(id)
+        ret = self.read_table_row(row_num)
+        return ret
+
+    # 这个方法写的真是太垃圾了，但是我赶着打游戏，就这样吧，凑合能用
+    def read_table_column(self, column_num):
+        columns = defaultdict(list)
+        with open(self.file_path, 'r') as csv_file:
+            creader = csv.DictReader(csv_file)
+            try:
+                for row in creader:
+                    for (k, v) in row.items():  # go over each column name and value
+                        if self.title_column_map.get(k) == column_num:
+                            columns[k].append(v)
+                            k_static = k
+            except Exception:
+                raise Exception('No Such Column In This File!')
+
+        return columns[k_static]
+
+
+    def read_table_value_by_id_and_title(self, id, title):
+        row_num = self.id_row_map.get(id)
+        column_num = self.title_column_map.get(title)
+        ret = self.read_table_value(row_num, column_num)
+        return ret
 
     def read_table(self):
         with open(self.file_path, 'r') as csv_file:
@@ -30,22 +78,26 @@ class CSVHandler:
             except Exception:
                 raise Exception('No Such Row In This File!')
 
-    def read_table_column(self, column_name):
+    # 按理说是调用上面那个read_table_column方法的，但我写完才想起来，就这样吧
+    def read_table_column_by_title(self, title):
         columns = defaultdict(list)
         with open(self.file_path, 'r') as csv_file:
             creader = csv.DictReader(csv_file)
             try:
                 for row in creader:
                     for (k, v) in row.items():  # go over each column name and value
-                        if k == column_name:
+                        if k == title:
                             columns[k].append(v)
             except Exception:
-                    raise Exception('No Such Column In This File!')
+                raise Exception('No Such Column In This File!')
 
-        return columns[column_name]
+        return columns[title]
+
+    def read_table_value(self, row_num, column_num):
+        row = self.read_table_row(row_num)
+        return row[column_num]
 
     def edit_table_value(self, row_num, column_num, new_value):
-        file_content = None
         with open(self.file_path, 'r') as f:
             creader = csv.reader(f)
             lines = [l for l in creader]
@@ -54,6 +106,11 @@ class CSVHandler:
         with open(self.file_path, 'w', newline='') as csv_file:
             cwriter = csv.writer(csv_file)
             cwriter.writerows(file_content)
+
+    def edit_table_value_by_id_and_title(self, id, title, new_value):
+        row_num = self.id_row_map.get(id)
+        column_num = self.title_column_map.get(title)
+        self.edit_table_value(row_num, column_num, new_value)
 
     # 没找到更好的方法，只能先读在内存里，再修改相应值，然后再写回文件
     def edit_table_head(self, old_head, new_head):
@@ -67,20 +124,32 @@ class CSVHandler:
             raise Exception('No Such Value In This Head!')
         self.edit_table_value(0, column_num, new_head)
 
-    # 一行是一个list， *kw可以一下传好几行
+    # 一行是一个list， *new_lines可以一下传好几行
     def add_new_rows(self, *new_lines):
         with open(self.file_path, 'a', newline='') as csv_file:
             cwriter = csv.writer(csv_file)
             for line in new_lines:
                 cwriter.writerows(line)
 
+    # TODO 加几个方法用来：增加head、增加一个column。
+    # TODO 将有没有key写入init函数，若没有，则加一列，然后操作完后删除这一列
+    # TODO 补全demo
+
     def delete_rows(self, *row_nums):
         table_list = self.read_table()
-        for row_num in row_nums:
+        for i, row_num in enumerate(row_nums):
             try:
-                table_list.pop(row_num)
+                table_list.pop(row_num-i)
             except Exception:
                 raise Exception('No Such Row In This File!')
         with open(self.file_path, 'w', newline='') as csv_file:
             cwriter = csv.writer(csv_file)
             cwriter.writerows(table_list)
+        self.__refresh__mappings()
+
+    def delete_rows_by_id(self, *ids):
+        row_nums = []
+        for id in ids:
+            row_num = self.id_row_map.get(id)
+            row_nums.append(row_num)
+        self.delete_rows(row_nums)
