@@ -1,27 +1,40 @@
 import csv
+import sys
 from collections import defaultdict
 
 
 class CSVHandler:
 
-    def __init__(self, file_path):
+    uniq_key = ''
+
+    def __init__(self, file_path, key):
         self.file_path = file_path
         self.id_row_map = {}
-        self.title_column_map = {}
-        self.__mapping_id_and_row_number()  # 不需要这个功能的话把这个注释掉
-        self.__mapping_title_and_column_number()  # 同上，但是read_table_row_by_id，read_value_by_id_and_title等一些方法会失效
 
-    def __mapping_id_and_row_number(self):
-        with open(self.file_path, 'r') as csv_file:
-            creader = csv.reader(csv_file)
-            for i, row in enumerate(creader):
-                self.id_row_map.__setitem__(row[0], i)
-                # 上面这行这么写死这个row[0]其实不大好，按具体需求改一改。意思是第0行为我的表的唯一识别ID（如果你的表里有且需要唯一识别key的话）
+        if key == '':
+            try:
+                sys.exit(0)
+            except:
+                raise Exception('没有唯一key为识别')
+        else:
+            global uniq_key
+            uniq_key = key
+        self.title_column_map = {}
+        self.__mapping_title_and_column_number()  # 同上，但是read_table_row_by_id，read_value_by_id_and_title等一些方法会失效
+        self.__mapping_id_and_row_number()  # 不需要这个功能的话把这个注释掉
 
     def __mapping_title_and_column_number(self):
         head_list = self.read_table_head()
         for i, head in enumerate(head_list):
             self.title_column_map.__setitem__(head, i)
+
+    def __mapping_id_and_row_number(self):
+        with open(self.file_path, 'r') as csv_file:
+            creader = csv.reader(csv_file)
+            for i, row in enumerate(creader):
+                global uniq_key
+                key_column = self.title_column_map.get(uniq_key)
+                self.id_row_map.__setitem__(row[key_column], i)
 
     def __refresh__mappings(self):
         self.__mapping_id_and_row_number()
@@ -47,7 +60,6 @@ class CSVHandler:
                 raise Exception('No Such Column In This File!')
 
         return columns[k_static]
-
 
     def read_table_value_by_id_and_title(self, id, title):
         row_num = self.id_row_map.get(id)
@@ -131,15 +143,20 @@ class CSVHandler:
             for line in new_lines:
                 cwriter.writerows(line)
 
-    # TODO 加几个方法用来：增加head、增加一个column。
-    # TODO 将有没有key写入init函数，若没有，则加一列，然后操作完后删除这一列
-    # TODO 补全demo
+    def add_new_head(self, new_title):
+        with open(self.file_path, 'r') as f:
+            creader = csv.reader(f)
+            lines = [l for l in creader]
+            lines[0].append(new_title)
+        with open(self.file_path, 'w', newline='') as csv_file:
+            cwriter = csv.writer(csv_file)
+            cwriter.writerows(lines)
 
     def delete_rows(self, *row_nums):
         table_list = self.read_table()
         for i, row_num in enumerate(row_nums):
             try:
-                table_list.pop(row_num-i)
+                table_list.pop(int(row_num) - i)
             except Exception:
                 raise Exception('No Such Row In This File!')
         with open(self.file_path, 'w', newline='') as csv_file:
@@ -148,8 +165,7 @@ class CSVHandler:
         self.__refresh__mappings()
 
     def delete_rows_by_id(self, *ids):
-        row_nums = []
         for id in ids:
             row_num = self.id_row_map.get(id)
-            row_nums.append(row_num)
-        self.delete_rows(row_nums)
+            self.delete_rows(row_num)
+        self.__refresh__mappings()
